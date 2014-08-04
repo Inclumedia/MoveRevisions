@@ -251,7 +251,7 @@ class SpecialMoveRevisions extends SpecialPage {
 					'id' => 'mw-userrights-form2'
 				)
 			) .
-			Xml::label( $this->msg( 'namespace' )->text(), 'namespace' ) .
+			Xml::label( $this->msg( 'moverevisions-namespace' )->text(), 'namespace' ) .
 			Html::namespaceSelector(
 				array( 'selected' => NS_MAIN ),
 				array( 'name' => 'namespace', 'id' => 'namespace' )

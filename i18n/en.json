@@ -9,7 +9,7 @@
     "moverevisions-desc": "Enables authorized users to move revisions that were deleted by particular log events",
     "moverevisions-intro": "You are about to move all the revisions that were deleted in the log entry. Please select a target namespace, target page title, and/or reason for moving the revisions:",
     "moverevisions-pagetitle": "Target page title:",
-    "moverevisions-namespace": "Target namespace",
+    "moverevisions-namespace": "Target namespace:",
     "moverevisions-reason": "Reason for moving revisions (optional):",
     "nologiderror": "No log ID was provided.",
     "invalidlogiderror": "The log ID did not correspond to a valid deletion event.",

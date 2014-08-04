@@ -51,3 +51,4 @@ $wgSpecialPageGroups['MoveRevisions'] = 'other';
 $wgHooks['GetActionLinks'][] = 'MoveRevisions::onGetActionLinks';
 $wgGroupPermissions['sysop']['moverevision'] = true;
 $messagesDirs['MoveRevisions'] = __DIR__ . '/i18n';
+$wgLogActions['move/revision']    = 'move-revision-log-entry';

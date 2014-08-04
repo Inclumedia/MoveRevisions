@@ -13,5 +13,6 @@
     "moverevisions-reason": "Reason for moving revisions (optional):",
     "nologiderror": "No log ID was provided.",
     "invalidlogiderror": "The log ID did not correspond to a valid deletion event.",
-    "moverevisions-done": "$1 revisions were moved to [[$2]]."
+    "moverevisions-done": "$1 revisions were moved to [[$2]].",
+    "move-revision-log-entry": "moved revisions to [[$1]]."
 }

@@ -198,8 +198,8 @@ class SpecialMoveRevisions extends SpecialPage {
 				'revision',
 				array( 'rev_page' => $pageId ),
 				array( 'rev_id' => $row->rev_id ) );
+			$affectedRows++;
 		}
-		$affectedRows += $dbw->affectedRows();
 		$latestRevisionRow = $dbw->selectRow(
 			'revision',
 			array( 'rev_id', 'maxrevid' => 'MAX(rev_id)' ),

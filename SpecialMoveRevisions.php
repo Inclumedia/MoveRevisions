@@ -183,7 +183,7 @@ class SpecialMoveRevisions extends SpecialPage {
 			array( 'ls_field' => 'rev_id', 'ls_log_id' => $this->mLogId ) );
 		$revisionRowsToMove = $dbw->select(
 			array( 'revision', 'log_search' ),
-			array( 'rev_id' ),
+			array( 'rev_id', 'rev_page' ),
 			array(
 				'ls_field' => 'rev_id',
 				'ls_log_id' => $this->mLogId
@@ -193,20 +193,26 @@ class SpecialMoveRevisions extends SpecialPage {
 			array( 'log_search' => array( 'INNER JOIN',
 				array( 'rev_id=ls_value' ) ) )
 		);
+		$sourcePageIds = array( $pageId );
 		foreach ( $revisionRowsToMove as $row ) {
+			$sourcePageIds[] = $row->rev_page;
 			$dbw->update(
 				'revision',
 				array( 'rev_page' => $pageId ),
 				array( 'rev_id' => $row->rev_id ) );
 			$affectedRows++;
 		}
-		$latestRevisionRow = $dbw->selectRow(
-			'revision',
-			array( 'rev_id', 'maxrevid' => 'MAX(rev_id)' ),
-			array( 'rev_page' => $pageId )
-		);
-		$latestRevision = Revision::loadFromId( $dbw, $latestRevisionRow->rev_id );
-		$page->updateRevisionOn( $dbw, $latestRevision );
+		foreach ( $sourcePageIds as $sourcePageId ) {
+			$latestRevisionRow = $dbw->selectRow(
+				'revision',
+				array( 'rev_id', 'maxrevid' => 'MAX(rev_id)' ),
+				array( 'rev_page' => $sourcePageId )
+			);
+			$latestRevision = Revision::loadFromId( $dbw, $latestRevisionRow->rev_id );
+			$thisTitle = Title::newFromID( $sourcePageId );
+			$thisPage = WikiPage::factory( $thisTitle );
+			$thisPage->updateRevisionOn( $dbw, $latestRevision );
+		}
 		$this->addLogEntry( $title, $reason );
 		return $affectedRows;
 	}

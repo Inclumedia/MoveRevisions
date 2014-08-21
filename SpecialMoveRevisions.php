@@ -141,7 +141,6 @@ class SpecialMoveRevisions extends SpecialPage {
 		$title = Title::makeTitleSafe ( $namespace, $titleString );
 		$page = WikiPage::factory( $title );
 		$dbw = wfGetDB( DB_MASTER );
-		$createdNew = false;
 		if ( $title->exists() ) {
 			$pageId = $title->getArticleID();
 		} else {
@@ -170,48 +169,65 @@ class SpecialMoveRevisions extends SpecialPage {
 			$row['rev_content_model'] = 'ar_content_model';
 			$row['rev_content_format'] = 'ar_content_format';
 		}
-		$dbw->insertSelect( 'revision', array( 'log_search', 'archive' ),
-			$row,
-			array(
-				'ls_field' => 'rev_id',
-				'ls_value=ar_rev_id',
-				'ls_log_id' => $this->mLogId
-			), __METHOD__
-		);
-		$affectedRows = $dbw->affectedRows();
-		$dbw->deleteJoin( 'archive', 'log_search', 'ar_rev_id', 'ls_value',
-			array( 'ls_field' => 'rev_id', 'ls_log_id' => $this->mLogId ) );
-		$revisionRowsToMove = $dbw->select(
-			array( 'revision', 'log_search' ),
-			array( 'rev_id', 'rev_page' ),
-			array(
-				'ls_field' => 'rev_id',
-				'ls_log_id' => $this->mLogId
-			),
-			__METHOD__,
-			array(),
-			array( 'log_search' => array( 'INNER JOIN',
-				array( 'rev_id=ls_value' ) ) )
-		);
-		$sourcePageIds = array( $pageId );
-		foreach ( $revisionRowsToMove as $row ) {
-			$sourcePageIds[] = $row->rev_page;
-			$dbw->update(
-				'revision',
-				array( 'rev_page' => $pageId ),
-				array( 'rev_id' => $row->rev_id ) );
-			$affectedRows++;
+		$logParams = $dbw->selectField( 'logging', 'log_params',
+			array( 'log_id' => $this->mLogId ) );
+		$revisions = unserialize( $logParams );
+		$insertSelectConds = '';
+		$deleteConds = '';
+		$firstRev = true;
+		foreach ( $revisions as $revision ) {
+			if ( !$firstRev ) {
+				$insertSelectConds .= ' OR ';
+				$deleteConds .= ' OR ';
+			}
+			$insertSelectConds .= "rev_id=$revision";
+			$deleteConds .= "ar_rev_id=$revision";
+			$firstRev = false;
 		}
+		$dbw->insertSelect( 'revision', array( 'archive' ),
+			$row,
+			$deleteConds,
+			__METHOD__
+		);
+		$dbw->delete( 'archive', $deleteConds );
+		$affectedRows = $dbw->affectedRows();
+		$sourcePageIds = array( $pageId );
+		$sourcePageRes = $dbw->select(
+			'revision',
+			'rev_page',
+			array( $insertSelectConds ),
+			__METHOD__,
+			array( 'DISTINCT' )
+		);
+		$emptyPages = array();
+		foreach ( $sourcePageRes as $sourcePageRow ) {
+			$sourcePageIds[] = intval( $sourcePageRow->rev_page );
+		}
+		$dbw->update(
+			'revision',
+			array( 'rev_page' => $pageId ),
+			array( $insertSelectConds )
+		);
+		$affectedRows += $dbw->affectedRows();
+		// Clean up page_latest
 		foreach ( $sourcePageIds as $sourcePageId ) {
 			$latestRevisionRow = $dbw->selectRow(
 				'revision',
-				array( 'rev_id', 'maxrevid' => 'MAX(rev_id)' ),
-				array( 'rev_page' => $sourcePageId )
+				array( 'rev_id', 'rev_timestamp' ),
+				array( 'rev_page' => $sourcePageId ),
+				__METHOD__,
+				array( 'ORDER BY' => 'rev_timestamp DESC' )
 			);
-			$latestRevision = Revision::loadFromId( $dbw, $latestRevisionRow->rev_id );
-			$thisTitle = Title::newFromID( $sourcePageId );
-			$thisPage = WikiPage::factory( $thisTitle );
-			$thisPage->updateRevisionOn( $dbw, $latestRevision );
+			// Delete empty pages from page table
+			if ( !$latestRevisionRow ) {
+				$dbw->delete( 'page', array( 'page_id' => $sourcePageId ) );
+			} else {
+				$dbw->update(
+					'page',
+					array( 'page_latest' => $latestRevisionRow->rev_id ),
+					array( 'page_id' => $sourcePageId )
+				);
+			}
 		}
 		$this->addLogEntry( $title, $reason );
 		return $affectedRows;
